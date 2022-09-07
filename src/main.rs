@@ -9,6 +9,8 @@ use std::{net::SocketAddr, time::Duration};
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+mod handlers;
+
 #[tokio::main]
 async fn main() {
     dotenv::dotenv().ok();
@@ -38,6 +40,7 @@ async fn main() {
     // build our application with a route
     let app = Router::new()
         .route("/", get(handler))
+        .nest("/auth", handlers::auth_router())
         .layer(TraceLayer::new_for_http())
         .layer(cors)
         .layer(Extension(pool));
