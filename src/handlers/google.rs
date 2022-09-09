@@ -1,44 +1,34 @@
 use axum::{
-  extract::Query,
-  response::{IntoResponse, Redirect},
-  Extension
+    extract::Query,
+    response::{IntoResponse, Redirect},
+    Extension
 };
 use oauth2::{
-  basic::BasicClient,
-  reqwest::async_http_client,
-  AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken,
-  RedirectUrl, RevocationUrl, Scope, TokenUrl
+    basic::BasicClient,
+    reqwest::async_http_client,
+    AuthorizationCode, CsrfToken, Scope, TokenResponse
 };
 
-pub fn get_client() -> BasicClient {
-    let client_id = ClientId::new(
-        std::env::var("GOOGLE_CLIENT_ID")
-            .expect("Missing the GOOGLE_CLIENT_ID environment variable.")
-    );
-    let client_secret = ClientSecret::new(
-        std::env::var("GOOGLE_CLIENT_SECRET")
-            .expect("Missing the GOOGLE_CLIENT_SECRET environment variable.")
-    );
-    let auth_url = AuthUrl::new("https://accounts.google.com/o/oauth2/v2/auth".to_string())
-        .expect("Invalid authorization endpoint URL");
-    let token_url = TokenUrl::new("https://www.googleapis.com/oauth2/v3/token".to_string())
-        .expect("Invalid token endpoint URL");
-    let redirect_uri = RedirectUrl::new("http://localhost:3000/auth/google/callback".to_string())
-        .expect("Invalid redirect URL");
-    let revocation_url = RevocationUrl::new("https://oauth2.googleapis.com/revoke".to_string())
-        .expect("Invalid revocation endpoint URL");
-
-    BasicClient::new(
-        client_id,
-        Some(client_secret),
-        auth_url,
-        Some(token_url),
-    )
-    .set_redirect_uri(redirect_uri)
-    .set_revocation_uri(revocation_url)
+#[derive(Debug, serde::Deserialize)]
+#[allow(dead_code)]
+pub struct AuthRequest {
+    code: String,
+    state: String,
 }
 
-pub async fn google_auth(Extension(google_oauth_client): Extension<BasicClient>) -> impl IntoResponse {
+#[derive(Debug, serde::Deserialize)]
+#[allow(dead_code)]
+pub struct Profile {
+    email: String,
+    family_name: String,
+    given_name: String,
+    id: String,
+    locale: String,
+    name: String,
+    picture: String,
+}
+
+pub async fn login(Extension(google_oauth_client): Extension<BasicClient>) -> impl IntoResponse {
     let (authorize_url, _csrf_state) = google_oauth_client
         .authorize_url(CsrfToken::new_random)
         .add_scope(Scope::new("profile".to_string()))
@@ -48,20 +38,25 @@ pub async fn google_auth(Extension(google_oauth_client): Extension<BasicClient>)
     Redirect::to(authorize_url.as_ref())
 }
 
-#[derive(Debug, serde::Deserialize)]
-#[allow(dead_code)]
-pub struct AuthRequest {
-  code: String,
-  state: String,
-}
-
-pub async fn google_auth_callback(
-  Query(query): Query<AuthRequest>,
-  Extension(google_oauth_client): Extension<BasicClient>
+pub async fn callback(
+    Query(query): Query<AuthRequest>,
+    Extension(google_oauth_client): Extension<BasicClient>
 ) -> impl IntoResponse {
-    let _token = google_oauth_client
+    let token = google_oauth_client
         .exchange_code(AuthorizationCode::new(query.code.clone()))
         .request_async(async_http_client)
+        .await
+        .unwrap();
+
+    // Fetch user profile
+    let client = reqwest::Client::new();
+    let _profile: Profile = client
+        .get("https://www.googleapis.com/auth/userinfo.profile")
+        .bearer_auth(token.access_token().secret())
+        .send()
+        .await
+        .unwrap()
+        .json::<Profile>()
         .await
         .unwrap();
     
