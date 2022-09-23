@@ -4,8 +4,13 @@ use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+mod error;
 mod handlers;
 mod middleware;
+mod models;
+mod repositories;
+mod services;
+mod utils;
 
 #[tokio::main]
 async fn main() {
