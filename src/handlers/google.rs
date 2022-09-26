@@ -53,7 +53,7 @@ pub async fn callback(
 
     let profile: OAuthProfile = google_profile.into();
 
-    link_or_register_oauth_user(&db, None, "google", &profile.id, &profile)
+    let user = link_or_register_oauth_user(&db, None, "google", &profile.id, &profile)
         .await
         .unwrap();
 
