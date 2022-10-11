@@ -1,4 +1,4 @@
-use axum::{routing::get, Extension, Router};
+use axum::{routing::{get, post}, Extension, Router};
 use std::net::SocketAddr;
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
@@ -35,6 +35,7 @@ async fn main() {
     let app = Router::new()
         .route("/auth/google", get(handlers::google::login))
         .route("/auth/google/callback", get(handlers::google::callback))
+        .route("/auth/login", post(handlers::login::login))
         .layer(middleware_stack);
 
     // run it

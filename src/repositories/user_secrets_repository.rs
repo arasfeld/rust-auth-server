@@ -36,3 +36,38 @@ pub async fn update_password_hash(db: &PgPool, user_id: Uuid, password_hash: &st
 
     Ok(())
 }
+
+pub async fn reset_login_attempts(db: &PgPool, user_id: Uuid) -> Result<(), AppError> {
+    sqlx::query!(
+        r#"
+            update user_secrets
+            set failed_password_attempts = 0,
+                first_failed_password_attempt = null,
+                last_login_at = now()
+            where user_id = $1
+        "#,
+        user_id
+    )
+    .execute(db)
+    .await
+    .unwrap();
+
+    Ok(())
+}
+
+pub async fn add_failed_login_attempt(db: &PgPool, user_id: Uuid) -> Result<(), AppError> {
+    sqlx::query!(
+        r#"
+            update user_secrets
+            set failed_password_attempts = (case when first_failed_password_attempt is null or first_failed_password_attempt < now() - interval '5 minutes' then 1 else failed_password_attempts + 1 end),
+                first_failed_password_attempt = (case when first_failed_password_attempt is null or first_failed_password_attempt < now() - interval '5 minutes' then now() else first_failed_password_attempt end)
+            where user_id = $1
+        "#,
+        user_id
+    )
+    .execute(db)
+    .await
+    .unwrap();
+
+    Ok(())
+}

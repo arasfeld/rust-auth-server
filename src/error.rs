@@ -4,6 +4,8 @@ use serde_json::json;
 #[derive(Debug)]
 pub enum AppError {
     InternalServerError,
+    InvalidUsernamePassword,
+    TooManyAttempts,
 }
 
 impl IntoResponse for AppError {
@@ -12,6 +14,14 @@ impl IntoResponse for AppError {
             Self::InternalServerError => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "an internal server error occured",
+            ),
+            Self::InvalidUsernamePassword => (
+                StatusCode::UNAUTHORIZED,
+                "the username and/or password used for authentication are invalid"
+            ),
+            Self::TooManyAttempts => (
+                StatusCode::UNAUTHORIZED,
+                "the account is locked due to too many failed login attempts"
             ),
         };
 
