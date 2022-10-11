@@ -11,6 +11,8 @@ pub async fn get_by_email(db: &PgPool, email: &str) -> Result<Option<UserEmail>,
             select id, user_id, email, is_verified
             from user_emails
             where email = $1
+            order by is_verified desc, created_at asc
+            limit 1
         "#,
         email,
     )

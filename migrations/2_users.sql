@@ -7,7 +7,6 @@
 create table users (
   id uuid primary key default uuid_generate_v4(),
   username varchar(24) not null unique check(length(username) >= 2 and length(username) <= 24 and username ~ '^[a-zA-Z]([_]?[a-zA-Z0-9])+$'),
-  name text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

@@ -15,6 +15,7 @@ pub async fn get_by_identifier(
             select id, user_id
             from user_authentications
             where identifier = $1 and service = $2
+            limit 1
         "#,
         identifier,
         service

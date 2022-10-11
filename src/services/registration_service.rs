@@ -8,11 +8,10 @@ pub async fn register_user(
     db: &PgPool,
     username: &str,
     email: &str,
-    name: &str,
     password: Option<&str>,
     email_is_verified: bool,
 ) -> Result<User, AppError> {
-    let user = user_repository::insert(db, username, name).await.unwrap();
+    let user = user_repository::insert(db, username).await.unwrap();
 
     // add the user's email
     user_email_repository::insert(db, user.id, email, email_is_verified)

@@ -41,7 +41,7 @@ pub async fn link_or_register_oauth_user(
             } else {
                 // create new user
                 let user =
-                    register_oauth_user(db, &profile.email, &profile.name, service, identifier)
+                    register_oauth_user(db, &profile.email, service, identifier)
                         .await
                         .unwrap();
 
@@ -62,12 +62,11 @@ pub async fn link_or_register_oauth_user(
 async fn register_oauth_user(
     db: &PgPool,
     email: &str,
-    name: &str,
     service: &str,
     identifier: &str,
 ) -> Result<User, AppError> {
     let username = username_generator::generate();
-    let user = registration_service::register_user(db, &username, email, name, None, true)
+    let user = registration_service::register_user(db, &username, email, None, true)
         .await
         .unwrap();
 

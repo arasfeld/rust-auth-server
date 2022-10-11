@@ -8,7 +8,7 @@ pub async fn get_by_id(db: &PgPool, id: Uuid) -> Result<User, AppError> {
     let user = sqlx::query_as!(
         User,
         r#"
-            select id, username, name
+            select id, username
             from users
             where id = $1
         "#,
@@ -25,12 +25,11 @@ pub async fn insert(db: &PgPool, username: &str, name: &str) -> Result<User, App
     let user = sqlx::query_as!(
         User,
         r#"
-            insert into users (username, name)
-            values ($1, $2)
-            returning id, username, name
+            insert into users (username)
+            values ($1)
+            returning id, username
         "#,
         username,
-        name
     )
     .fetch_one(db)
     .await
