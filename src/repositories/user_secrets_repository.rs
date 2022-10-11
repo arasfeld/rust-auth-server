@@ -8,7 +8,7 @@ pub async fn get_by_user_id(db: &PgPool, user_id: Uuid) -> Result<UserSecrets, A
     let user = sqlx::query_as!(
         UserSecrets,
         r#"
-            select password_hash
+            select password_hash, failed_password_attempts, first_failed_password_attempt
             from user_secrets
             where user_id = $1
         "#,
