@@ -1,7 +1,7 @@
 use axum::{
     extract::Query,
     response::{IntoResponse, Redirect},
-    Extension,
+    Extension, Json
 };
 use oauth2::{
     basic::BasicClient, reqwest::async_http_client, AuthorizationCode, CsrfToken, Scope,
@@ -57,5 +57,5 @@ pub async fn callback(
         .await
         .unwrap();
 
-    Redirect::to("/")
+    Json(user)
 }

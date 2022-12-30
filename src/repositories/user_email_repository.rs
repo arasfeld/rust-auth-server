@@ -1,10 +1,10 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::error::AppError;
+use crate::error::Error;
 use crate::models::user::UserEmail;
 
-pub async fn get_by_email(db: &PgPool, email: &str) -> Result<Option<UserEmail>, AppError> {
+pub async fn get_by_email(db: &PgPool, email: &str) -> Result<Option<UserEmail>, Error> {
     let user_email = sqlx::query_as!(
         UserEmail,
         r#"
@@ -17,8 +17,7 @@ pub async fn get_by_email(db: &PgPool, email: &str) -> Result<Option<UserEmail>,
         email,
     )
     .fetch_optional(db)
-    .await
-    .unwrap();
+    .await?;
 
     Ok(user_email)
 }
@@ -28,7 +27,7 @@ pub async fn insert(
     user_id: Uuid,
     email: &str,
     is_verified: bool,
-) -> Result<UserEmail, AppError> {
+) -> Result<UserEmail, Error> {
     let user_email = sqlx::query_as!(
         UserEmail,
         r#"
@@ -41,8 +40,7 @@ pub async fn insert(
         is_verified
     )
     .fetch_one(db)
-    .await
-    .unwrap();
+    .await?;
 
     Ok(user_email)
 }

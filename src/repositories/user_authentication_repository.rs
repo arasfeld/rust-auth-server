@@ -1,14 +1,14 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::error::AppError;
+use crate::error::Error;
 use crate::models::user::UserAuthentication;
 
 pub async fn get_by_identifier(
     db: &PgPool,
     identifier: &str,
     service: &str,
-) -> Result<Option<UserAuthentication>, AppError> {
+) -> Result<Option<UserAuthentication>, Error> {
     let user_authentication = sqlx::query_as!(
         UserAuthentication,
         r#"
@@ -21,8 +21,7 @@ pub async fn get_by_identifier(
         service
     )
     .fetch_optional(db)
-    .await
-    .unwrap();
+    .await?;
 
     Ok(user_authentication)
 }
@@ -32,7 +31,7 @@ pub async fn insert(
     user_id: Uuid,
     identifier: &str,
     service: &str,
-) -> Result<UserAuthentication, AppError> {
+) -> Result<UserAuthentication, Error> {
     let user_authentication = sqlx::query_as!(
         UserAuthentication,
         r#"
@@ -45,8 +44,7 @@ pub async fn insert(
         service,
     )
     .fetch_one(db)
-    .await
-    .unwrap();
+    .await?;
 
     Ok(user_authentication)
 }

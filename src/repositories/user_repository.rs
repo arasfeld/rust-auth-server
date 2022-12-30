@@ -1,10 +1,10 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::error::AppError;
+use crate::error::{Error, ResultExt};
 use crate::models::user::User;
 
-pub async fn get_by_id(db: &PgPool, id: Uuid) -> Result<User, AppError> {
+pub async fn get_by_id(db: &PgPool, id: Uuid) -> Result<User, Error> {
     let user = sqlx::query_as!(
         User,
         r#"
@@ -14,14 +14,14 @@ pub async fn get_by_id(db: &PgPool, id: Uuid) -> Result<User, AppError> {
         "#,
         id
     )
-    .fetch_one(db)
-    .await
-    .unwrap();
+    .fetch_optional(db)
+    .await?
+    .ok_or(Error::NotFound)?;
 
     Ok(user)
 }
 
-pub async fn get_by_username(db: &PgPool, username: &str) -> Result<User, AppError> {
+pub async fn get_by_username(db: &PgPool, username: &str) -> Result<User, Error> {
     let user = sqlx::query_as!(
         User,
         r#"
@@ -31,14 +31,14 @@ pub async fn get_by_username(db: &PgPool, username: &str) -> Result<User, AppErr
         "#,
         username
     )
-    .fetch_one(db)
-    .await
-    .unwrap();
+    .fetch_optional(db)
+    .await?
+    .ok_or(Error::NotFound)?;
 
     Ok(user)
 }
 
-pub async fn get_by_email(db: &PgPool, email: &str) -> Result<User, AppError> {
+pub async fn get_by_email(db: &PgPool, email: &str) -> Result<User, Error> {
     let user = sqlx::query_as!(
         User,
         r#"
@@ -53,14 +53,14 @@ pub async fn get_by_email(db: &PgPool, email: &str) -> Result<User, AppError> {
         "#,
         email
     )
-    .fetch_one(db)
-    .await
-    .unwrap();
+    .fetch_optional(db)
+    .await?
+    .ok_or(Error::NotFound)?;
 
     Ok(user)
 }
 
-pub async fn insert(db: &PgPool, username: &str) -> Result<User, AppError> {
+pub async fn insert(db: &PgPool, username: &str) -> Result<User, Error> {
     let user = sqlx::query_as!(
         User,
         r#"
@@ -72,7 +72,9 @@ pub async fn insert(db: &PgPool, username: &str) -> Result<User, AppError> {
     )
     .fetch_one(db)
     .await
-    .unwrap();
+    .on_constraint("users_username_key", |_| {
+        Error::unprocessable_entity([("username", "username taken")])
+    })?;
 
     Ok(user)
 }

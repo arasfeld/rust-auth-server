@@ -11,7 +11,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::models::user::User;
-use crate::{error::AppError, repositories::user_repository};
+use crate::{error::Error, repositories::user_repository};
 
 static JWT_SECRET: Lazy<String> =
     Lazy::new(|| std::env::var("JWT_SECRET").expect("JWT_SECRET must be set"));
@@ -23,7 +23,7 @@ pub struct Claims {
     pub iat: i64,
 }
 
-pub fn sign(id: Uuid) -> Result<String, AppError> {
+pub fn sign(id: Uuid) -> Result<String, Error> {
     let iat = OffsetDateTime::now_utc();
     let exp = iat + Duration::from_secs(60 * 60 * 24);
 
@@ -44,7 +44,7 @@ impl<B> FromRequest<B> for User
 where
     B: Send,
 {
-    type Rejection = AppError;
+    type Rejection = Error;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         // Extract the token from the authorization header
@@ -62,9 +62,7 @@ where
         )
         .unwrap();
         // Get the user from the database
-        let user = user_repository::get_by_id(&pool, token_data.claims.sub)
-            .await
-            .unwrap();
+        let user = user_repository::get_by_id(&pool, token_data.claims.sub).await?;
 
         Ok(user)
     }
