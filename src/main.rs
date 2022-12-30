@@ -36,6 +36,7 @@ async fn main() {
         .route("/auth/google", get(handlers::google::login))
         .route("/auth/google/callback", get(handlers::google::callback))
         .route("/auth/login", post(handlers::login::login))
+        .route("/auth/register", post(handlers::register::register))
         .layer(middleware_stack);
 
     // run it
