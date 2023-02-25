@@ -1,11 +1,10 @@
 use axum::{
-    extract::Query,
+    extract::{Query, State},
     response::IntoResponse,
-    Extension, Json,
+    Json,
 };
-use sqlx::PgPool;
 
-use crate::config::Config;
+use crate::http::AppState;
 use crate::http::models::user::User;
 use crate::http::services::login_service;
 use crate::http::utils::jwt;
@@ -25,12 +24,12 @@ pub struct LoginResponse {
 
 pub async fn login(
     Query(query): Query<LoginRequest>,
-    Extension(config): Extension<Config>,
-    Extension(db): Extension<PgPool>,
+    State(state): State<AppState>,
 ) -> impl IntoResponse {
-    let user = login_service::login(&db, &query.username, &query.password).await.unwrap();
+    let user = login_service::login(&state.db, &query.username, &query.password).await.unwrap();
 
-    let token = jwt::sign(user.id, config.jwt_secret.to_owned()).unwrap();
+    let jwt_secret = state.config.jwt_secret.to_owned();
+    let token = jwt::sign(user.id, jwt_secret).unwrap();
 
     Json(LoginResponse { token, user })
 }

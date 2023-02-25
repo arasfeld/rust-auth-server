@@ -1,15 +1,16 @@
 use axum::{
     async_trait,
-    extract::{Extension, FromRequest, RequestParts, TypedHeader},
+    extract::{FromRef, FromRequestParts, TypedHeader},
     headers::{authorization::Bearer, Authorization},
+    http::request::Parts,
+    RequestPartsExt,
 };
 use jsonwebtoken::{decode, DecodingKey, EncodingKey, Header, Validation};
-use sqlx::PgPool;
 use std::time::Duration;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::config::Config;
+use crate::http::AppState;
 use crate::http::models::user::User;
 use crate::http::{error::Error, repositories::user_repository};
 
@@ -37,30 +38,30 @@ pub fn sign(id: Uuid, secret: String) -> Result<String, Error> {
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for User
+impl<S> FromRequestParts<S> for User
 where
-    B: Send,
+    AppState: FromRef<S>,
+    S: Send + Sync,
 {
     type Rejection = Error;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         // Extract the token from the authorization header
-        let TypedHeader(Authorization(bearer)) =
-            TypedHeader::<Authorization<Bearer>>::from_request(req)
-                .await
-                .unwrap();
+        let TypedHeader(Authorization(bearer)) = parts
+            .extract::<TypedHeader<Authorization<Bearer>>>()
+            .await
+            .unwrap();
         // Extract postgres pool extension from request
-        let Extension(pool) = Extension::<PgPool>::from_request(req).await.unwrap();
-        let Extension(config) = Extension::<Config>::from_request(req).await.unwrap();
+        let state = AppState::from_ref(state);
         // Decode the user data
         let token_data = decode::<Claims>(
             bearer.token(),
-            &DecodingKey::from_secret(config.jwt_secret.as_bytes()),
+            &DecodingKey::from_secret(state.config.jwt_secret.as_bytes()),
             &Validation::default(),
         )
         .unwrap();
         // Get the user from the database
-        let user = user_repository::get_by_id(&pool, token_data.claims.sub).await?;
+        let user = user_repository::get_by_id(&state.db, token_data.claims.sub).await?;
 
         Ok(user)
     }

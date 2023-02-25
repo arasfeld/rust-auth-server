@@ -1,11 +1,10 @@
 use axum::{
-    extract::Query,
+    extract::{Query, State},
     response::IntoResponse,
-    Extension, Json,
+    Json,
 };
-use sqlx::PgPool;
 
-use crate::config::Config;
+use crate::http::AppState;
 use crate::http::models::user::User;
 use crate::http::services::registration_service;
 use crate::http::utils::jwt;
@@ -26,18 +25,18 @@ pub struct RegisterResponse {
 
 pub async fn register(
     Query(query): Query<RegisterRequest>,
-    Extension(config): Extension<Config>,
-    Extension(db): Extension<PgPool>,
+    State(state): State<AppState>,
 ) -> impl IntoResponse {
     let user = registration_service::register_user(
-        &db,
+        &state.db,
         &query.username,
         &query.email,
         Some(&query.password),
         false
     ).await.unwrap();
 
-    let token = jwt::sign(user.id, config.jwt_secret.to_owned()).unwrap();
+    let jwt_secret = state.config.jwt_secret.to_owned();
+    let token = jwt::sign(user.id, jwt_secret).unwrap();
 
     Json(RegisterResponse { token, user })
 }

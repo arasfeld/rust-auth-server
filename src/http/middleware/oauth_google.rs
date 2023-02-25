@@ -2,15 +2,9 @@ use oauth2::{
     basic::BasicClient, AuthUrl, ClientId, ClientSecret, RedirectUrl, RevocationUrl, TokenUrl,
 };
 
-pub fn get_client() -> BasicClient {
-    let client_id = ClientId::new(
-        std::env::var("GOOGLE_CLIENT_ID")
-            .expect("Missing the GOOGLE_CLIENT_ID environment variable."),
-    );
-    let client_secret = ClientSecret::new(
-        std::env::var("GOOGLE_CLIENT_SECRET")
-            .expect("Missing the GOOGLE_CLIENT_SECRET environment variable."),
-    );
+pub fn get_client(client_id: &str, client_secret: &str) -> BasicClient {
+    let client_id = ClientId::new(client_id.to_string());
+    let client_secret = ClientSecret::new(client_secret.to_string());
     let auth_url = AuthUrl::new("https://accounts.google.com/o/oauth2/v2/auth".to_string())
         .expect("Invalid authorization endpoint URL");
     let token_url = TokenUrl::new("https://oauth2.googleapis.com/token".to_string())
