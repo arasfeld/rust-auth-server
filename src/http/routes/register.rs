@@ -5,9 +5,10 @@ use axum::{
 };
 use sqlx::PgPool;
 
-use crate::models::user::User;
-use crate::services::registration_service;
-use crate::utils::jwt;
+use crate::config::Config;
+use crate::http::models::user::User;
+use crate::http::services::registration_service;
+use crate::http::utils::jwt;
 
 #[derive(Debug, serde::Deserialize)]
 #[allow(dead_code)]
@@ -25,6 +26,7 @@ pub struct RegisterResponse {
 
 pub async fn register(
     Query(query): Query<RegisterRequest>,
+    Extension(config): Extension<Config>,
     Extension(db): Extension<PgPool>,
 ) -> impl IntoResponse {
     let user = registration_service::register_user(
@@ -35,7 +37,7 @@ pub async fn register(
         false
     ).await.unwrap();
 
-    let token = jwt::sign(user.id).unwrap();
+    let token = jwt::sign(user.id, config.jwt_secret.to_owned()).unwrap();
 
     Json(RegisterResponse { token, user })
 }

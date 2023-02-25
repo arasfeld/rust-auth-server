@@ -1,9 +1,9 @@
 use sqlx::PgPool;
 
-use crate::error::Error;
-use crate::models::user::User;
-use crate::repositories::{user_email_repository, user_repository, user_secrets_repository};
-use crate::utils::encryption;
+use crate::http::error::Error;
+use crate::http::models::user::User;
+use crate::http::repositories::{user_email_repository, user_repository, user_secrets_repository};
+use crate::http::utils::encryption;
 
 pub async fn register_user(
     db: &PgPool,

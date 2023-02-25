@@ -4,17 +4,14 @@ use axum::{
     headers::{authorization::Bearer, Authorization},
 };
 use jsonwebtoken::{decode, DecodingKey, EncodingKey, Header, Validation};
-use once_cell::sync::Lazy;
 use sqlx::PgPool;
 use std::time::Duration;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::models::user::User;
-use crate::{error::Error, repositories::user_repository};
-
-static JWT_SECRET: Lazy<String> =
-    Lazy::new(|| std::env::var("JWT_SECRET").expect("JWT_SECRET must be set"));
+use crate::config::Config;
+use crate::http::models::user::User;
+use crate::http::{error::Error, repositories::user_repository};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub struct Claims {
@@ -23,7 +20,7 @@ pub struct Claims {
     pub iat: i64,
 }
 
-pub fn sign(id: Uuid) -> Result<String, Error> {
+pub fn sign(id: Uuid, secret: String) -> Result<String, Error> {
     let iat = OffsetDateTime::now_utc();
     let exp = iat + Duration::from_secs(60 * 60 * 24);
 
@@ -34,7 +31,7 @@ pub fn sign(id: Uuid) -> Result<String, Error> {
             iat: iat.unix_timestamp(),
             exp: exp.unix_timestamp(),
         },
-        &EncodingKey::from_secret(JWT_SECRET.as_bytes()),
+        &EncodingKey::from_secret(secret.as_bytes()),
     )
     .unwrap())
 }
@@ -54,10 +51,11 @@ where
                 .unwrap();
         // Extract postgres pool extension from request
         let Extension(pool) = Extension::<PgPool>::from_request(req).await.unwrap();
+        let Extension(config) = Extension::<Config>::from_request(req).await.unwrap();
         // Decode the user data
         let token_data = decode::<Claims>(
             bearer.token(),
-            &DecodingKey::from_secret(JWT_SECRET.as_bytes()),
+            &DecodingKey::from_secret(config.jwt_secret.as_bytes()),
             &Validation::default(),
         )
         .unwrap();

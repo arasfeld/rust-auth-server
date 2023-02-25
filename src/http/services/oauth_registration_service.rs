@@ -1,11 +1,11 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::error::Error;
-use crate::models::{oauth_profile::OAuthProfile, user::User};
-use crate::repositories::{user_authentication_repository, user_email_repository, user_repository};
-use crate::services::registration_service;
-use crate::utils::username_generator;
+use crate::http::error::Error;
+use crate::http::models::{oauth_profile::OAuthProfile, user::User};
+use crate::http::repositories::{user_authentication_repository, user_email_repository, user_repository};
+use crate::http::services::registration_service;
+use crate::http::utils::username_generator;
 
 pub async fn link_or_register_oauth_user(
     db: &PgPool,

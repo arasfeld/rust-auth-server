@@ -1,8 +1,8 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::error::Error;
-use crate::models::user::UserEmail;
+use crate::http::error::Error;
+use crate::http::models::user::UserEmail;
 
 pub async fn get_by_email(db: &PgPool, email: &str) -> Result<Option<UserEmail>, Error> {
     let user_email = sqlx::query_as!(

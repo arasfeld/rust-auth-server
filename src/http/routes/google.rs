@@ -9,7 +9,10 @@ use oauth2::{
 };
 use sqlx::PgPool;
 
-use crate::{services::oauth_registration_service::link_or_register_oauth_user, models::oauth_profile::{GoogleOAuthProfile, OAuthProfile}};
+use crate::http::{
+    services::oauth_registration_service::link_or_register_oauth_user,
+    models::oauth_profile::{GoogleOAuthProfile, OAuthProfile}
+};
 
 #[derive(Debug, serde::Deserialize)]
 #[allow(dead_code)]

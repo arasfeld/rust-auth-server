@@ -1,49 +1,40 @@
-use axum::{routing::{get, post}, Extension, Router};
-use std::net::SocketAddr;
-use tower::ServiceBuilder;
-use tower_http::trace::TraceLayer;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use anyhow::Context;
+use clap::Parser;
+use sqlx::postgres::PgPoolOptions;
 
-mod error;
-mod handlers;
-mod middleware;
-mod models;
-mod repositories;
-mod services;
-mod utils;
+use rust_auth_server::config::Config;
+use rust_auth_server::http;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()>  {
+    // This returns an error if the `.env` file doesn't exist, but that's not what we want
+    // since we're not going to use a `.env` file if we deploy this application.
     dotenv::dotenv().ok();
 
-    tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::new(
-            std::env::var("RUST_LOG")
-                .unwrap_or_else(|_| "rust-auth-server=debug,tower_http=debug".into()),
-        ))
-        .with(tracing_subscriber::fmt::layer())
-        .init();
+    // Parse our configuration from the environment.
+    // This will exit with a help message if something is wrong.
+    let config = Config::parse();
 
-    let middleware_stack = ServiceBuilder::new()
-        .layer(TraceLayer::new_for_http())
-        .layer(Extension(middleware::cors()))
-        .layer(Extension(middleware::postgres::get_pool().await))
-        .layer(Extension(middleware::oauth_google::get_client()))
-        .into_inner();
-
-    // build our application with a route
-    let app = Router::new()
-        .route("/auth/google", get(handlers::google::login))
-        .route("/auth/google/callback", get(handlers::google::callback))
-        .route("/auth/login", post(handlers::login::login))
-        .route("/auth/register", post(handlers::register::register))
-        .layer(middleware_stack);
-
-    // run it
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    tracing::debug!("listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+    // We create a single connection pool for SQLx that's shared across the whole application.
+    // This saves us from opening a new connection for every API call, which is wasteful.
+    let db = PgPoolOptions::new()
+        // The default connection limit for a Postgres server is 100 connections, minus 3 for superusers.
+        // Since we're using the default superuser we don't have to worry about this too much,
+        // although we should leave some connections available for manual access.
+        //
+        // If you're deploying your application with multiple replicas, then the total
+        // across all replicas should not exceed the Postgres connection limit.
+        .max_connections(50)
+        .connect(&config.database_url)
         .await
-        .unwrap();
+        .context("could not connect to database_url")?;
+
+    // This embeds database migrations in the application binary so we can ensure the database
+    // is migrated correctly on startup
+    sqlx::migrate!().run(&db).await?;
+
+    // Finally, we spin up our API.
+    http::serve(config, db).await?;
+
+    Ok(())
 }
