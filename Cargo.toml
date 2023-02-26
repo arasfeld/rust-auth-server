@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 # Core dependencies: runtime, HTTP framework and database client.
 axum = { version = "0.6", features = ["headers"] }
+axum-server = { version = "0.4", features = ["tls-rustls"] }
 sqlx = { version = "0.6", features = ["runtime-tokio-rustls", "postgres", "json", "time", "uuid"] }
 tokio = { version = "1.25", features = ["full"] }
 tower = { version = "0.4", features = ["full"] }

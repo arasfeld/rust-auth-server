@@ -1,69 +1,43 @@
-use anyhow::Context;
-use axum::{routing::{get, post}, Extension, Router};
-use oauth2::basic::BasicClient;
-use sqlx::PgPool;
-use std::{net::SocketAddr, sync::Arc};
-use tower::ServiceBuilder;
-use tower_http::trace::TraceLayer;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use crate::config::Config;
+use axum::{
+    extract::Host,
+    handler::HandlerWithoutStateExt,
+    http::{StatusCode, Uri},
+    response::Redirect,
+    BoxError,
+};
+use std::net::SocketAddr;
 
-mod error;
-mod middleware;
-mod models;
-mod repositories;
-mod routes;
-mod services;
-mod utils;
+pub async fn redirect_http_to_https(http_port: u16, https_port: u16) {
+  fn make_https(host: String, uri: Uri, http_port: u16, https_port: u16) -> Result<Uri, BoxError> {
+      let mut parts = uri.into_parts();
 
-/// The core type through which handler functions can access common API state.
-///
-/// This can be accessed by adding a parameter `State<AppState>` to a handler function's
-/// parameters.
-#[derive(Clone)]
-pub struct AppState {
-    config: Arc<Config>,
-    db: PgPool,
-    google_client: BasicClient,
-}
+      parts.scheme = Some(axum::http::uri::Scheme::HTTPS);
 
-pub async fn serve(config: Config, db: PgPool) -> anyhow::Result<()> {
-    tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::new(
-            std::env::var("RUST_LOG")
-                .unwrap_or_else(|_| "rust-auth-server=debug,tower_http=debug".into()),
-        ))
-        .with(tracing_subscriber::fmt::layer())
-        .init();
+      if parts.path_and_query.is_none() {
+          parts.path_and_query = Some("/".parse().unwrap());
+      }
 
-    let middleware_stack = ServiceBuilder::new()
-        .layer(TraceLayer::new_for_http())
-        .layer(Extension(middleware::cors()))
-        .into_inner();
+      let https_host = host.replace(&http_port.to_string(), &https_port.to_string());
+      parts.authority = Some(https_host.parse()?);
 
-    let google_client =
-        middleware::oauth_google::get_client(&config.google_client_id, &config.google_client_secret);
+      Ok(Uri::from_parts(parts)?)
+  }
 
-    let app_state = AppState {
-        config: Arc::new(config),
-        db,
-        google_client,
-    };
+  let redirect = move |Host(host): Host, uri: Uri| async move {
+      match make_https(host, uri, http_port, https_port) {
+          Ok(uri) => Ok(Redirect::permanent(&uri.to_string())),
+          Err(error) => {
+              tracing::warn!(%error, "failed to convert URI to HTTPS");
+              Err(StatusCode::BAD_REQUEST)
+          }
+      }
+  };
 
-    // build our application with a route
-    let app = Router::new()
-        .route("/auth/google", get(routes::google::login))
-        .route("/auth/google/callback", get(routes::google::callback))
-        .route("/auth/login", post(routes::login::login))
-        .route("/auth/register", post(routes::register::register))
-        .layer(middleware_stack)
-        .with_state(app_state);
+  let addr = SocketAddr::from(([127, 0, 0, 1], http_port));
+  tracing::debug!("HTTP redirect listening on {}", addr);
 
-    // run it
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    tracing::debug!("listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
-        .await
-        .context("error running HTTP server")
+  axum::Server::bind(&addr)
+      .serve(redirect.into_make_service())
+      .await
+      .unwrap();
 }

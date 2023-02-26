@@ -1,8 +1,8 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::http::error::Error;
-use crate::http::models::user::UserAuthentication;
+use crate::https::error::Error;
+use crate::https::models::user::UserAuthentication;
 
 pub async fn get_by_identifier(
     db: &PgPool,

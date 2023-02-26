@@ -24,4 +24,12 @@ pub struct Config {
     /// The secret used for encoding JWT tokens
     #[arg(long, env)]
     pub jwt_secret: String,
+
+    /// The port to serve the HTTP redirect server
+    #[arg(long, env)]
+    pub port_http: u16,
+
+    /// The port to serve the HTTPS application server
+    #[arg(long, env)]
+    pub port_https: u16,
 }

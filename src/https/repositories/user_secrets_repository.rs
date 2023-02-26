@@ -1,8 +1,8 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::http::error::Error;
-use crate::http::models::user::UserSecrets;
+use crate::https::error::Error;
+use crate::https::models::user::UserSecrets;
 
 pub async fn get_by_user_id(db: &PgPool, user_id: Uuid) -> Result<UserSecrets, Error> {
     let user = sqlx::query_as!(

@@ -3,5 +3,8 @@
 /// [`clap`]: https://github.com/clap-rs/clap/
 pub mod config;
 
-/// Contains the setup code for the API build with Axum.
+/// Contains server to redirect HTTP requests to HTTPS
 pub mod http;
+
+/// Contains the setup code for the API build with Axum.
+pub mod https;
