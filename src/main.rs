@@ -1,12 +1,21 @@
 use anyhow::Context;
 use clap::Parser;
 use sqlx::postgres::PgPoolOptions;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use rust_auth_server::config::Config;
-use rust_auth_server::http;
+use rust_auth_server::{http, https};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()>  {
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::new(
+            std::env::var("RUST_LOG")
+                .unwrap_or_else(|_| "rust-auth-server=debug,tower_http=debug".into()),
+        ))
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+
     // This returns an error if the `.env` file doesn't exist, but that's not what we want
     // since we're not going to use a `.env` file if we deploy this application.
     dotenv::dotenv().ok();
@@ -33,8 +42,11 @@ async fn main() -> anyhow::Result<()>  {
     // is migrated correctly on startup
     sqlx::migrate!().run(&db).await?;
 
+    // spawn a second server to redirect http requests to this server
+    tokio::spawn(http::redirect_http_to_https(config.port_http, config.port_https));
+
     // Finally, we spin up our API.
-    http::serve(config, db).await?;
+    https::serve(config, db).await?;
 
     Ok(())
 }

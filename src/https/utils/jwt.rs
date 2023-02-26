@@ -10,9 +10,9 @@ use std::time::Duration;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::http::AppState;
-use crate::http::models::user::User;
-use crate::http::{error::Error, repositories::user_repository};
+use crate::https::AppState;
+use crate::https::models::user::User;
+use crate::https::{error::Error, repositories::user_repository};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub struct Claims {

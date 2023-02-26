@@ -4,10 +4,10 @@ use axum::{
     Json,
 };
 
-use crate::http::AppState;
-use crate::http::models::user::User;
-use crate::http::services::registration_service;
-use crate::http::utils::jwt;
+use crate::https::AppState;
+use crate::https::models::user::User;
+use crate::https::services::registration_service;
+use crate::https::utils::jwt;
 
 #[derive(Debug, serde::Deserialize)]
 #[allow(dead_code)]

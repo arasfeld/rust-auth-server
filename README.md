@@ -13,4 +13,13 @@ $ cargo install sqlx-cli --features postgres
 
 # run migrations
 $ sqlx migrate run
+
+# generate self-signed certificate for TLS/SSL
+$ openssl req -newkey rsa:2048 \
+              -x509 \
+              -sha256 \
+              -days 3650 \
+              -nodes \
+              -out cert.pem \
+              -keyout key.pem
 ```

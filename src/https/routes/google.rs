@@ -5,7 +5,7 @@ use axum::{
 };
 use oauth2::{reqwest::async_http_client, AuthorizationCode, CsrfToken, Scope, TokenResponse};
 
-use crate::http::{
+use crate::https::{
     services::oauth_registration_service::link_or_register_oauth_user,
     models::oauth_profile::{GoogleOAuthProfile, OAuthProfile},
     AppState

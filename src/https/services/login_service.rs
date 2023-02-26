@@ -1,9 +1,9 @@
 use sqlx::PgPool;
 
-use crate::http::error::Error;
-use crate::http::models::user::User;
-use crate::http::repositories::{user_repository, user_secrets_repository};
-use crate::http::utils::encryption::verify_password;
+use crate::https::error::Error;
+use crate::https::models::user::User;
+use crate::https::repositories::{user_repository, user_secrets_repository};
+use crate::https::utils::encryption::verify_password;
 
 pub async fn login(
     db: &PgPool,
