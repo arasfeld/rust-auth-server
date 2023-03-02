@@ -18,7 +18,7 @@ tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Authentication
-jsonwebtoken = "8"
+async-session = "3.0"
 oauth2 = "4.3"
 reqwest = { version = "0.11", default-features = false, features = ["rustls-tls", "json"] }
 rust-argon2 = "1.0"

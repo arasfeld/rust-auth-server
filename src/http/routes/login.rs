@@ -1,13 +1,13 @@
 use axum::{
     extract::{Query, State},
+    http::{header::SET_COOKIE, HeaderMap},
     response::IntoResponse,
-    Json,
+    Json
 };
 
 use crate::http::AppState;
 use crate::http::models::user::User;
-use crate::http::services::login_service;
-use crate::http::utils::jwt;
+use crate::http::services::{login_service, session_service};
 
 #[derive(Debug, serde::Deserialize)]
 #[allow(dead_code)]
@@ -18,7 +18,6 @@ pub struct LoginRequest {
 
 #[derive(Debug, serde::Serialize)]
 pub struct LoginResponse {
-    token: String,
     user: User,
 }
 
@@ -28,8 +27,11 @@ pub async fn login(
 ) -> impl IntoResponse {
     let user = login_service::login(&state.db, &query.username, &query.password).await.unwrap();
 
-    let jwt_secret = state.config.jwt_secret.to_owned();
-    let token = jwt::sign(user.id, jwt_secret).unwrap();
+    let cookie = session_service::create(state.session_store, &user.id).await;
 
-    Json(LoginResponse { token, user })
+    // Set cookie
+    let mut headers = HeaderMap::new();
+    headers.insert(SET_COOKIE, cookie.parse().unwrap());
+
+    (headers, Json(LoginResponse { user }))
 }
