@@ -1,4 +1,5 @@
 use anyhow::Context;
+use async_session::MemoryStore;
 use axum::{routing::{get, post}, Extension, Router};
 use oauth2::basic::BasicClient;
 use sqlx::PgPool;
@@ -25,6 +26,7 @@ pub struct AppState {
     config: Arc<Config>,
     db: PgPool,
     google_client: BasicClient,
+    session_store: MemoryStore,
 }
 
 pub async fn serve(config: Config, db: PgPool) -> anyhow::Result<()> {
@@ -48,6 +50,7 @@ pub async fn serve(config: Config, db: PgPool) -> anyhow::Result<()> {
         config: Arc::new(config),
         db,
         google_client,
+        session_store: MemoryStore::new(),
     };
 
     // build our application with a route
@@ -56,6 +59,7 @@ pub async fn serve(config: Config, db: PgPool) -> anyhow::Result<()> {
         .route("/auth/google/callback", get(routes::google::callback))
         .route("/auth/login", post(routes::login::login))
         .route("/auth/register", post(routes::register::register))
+        .route("/me", get(routes::me::me))
         .layer(middleware_stack)
         .with_state(app_state);
 

@@ -7,7 +7,6 @@ use axum::{
 use crate::http::AppState;
 use crate::http::models::user::User;
 use crate::http::services::registration_service;
-use crate::http::utils::jwt;
 
 #[derive(Debug, serde::Deserialize)]
 #[allow(dead_code)]
@@ -19,7 +18,6 @@ pub struct RegisterRequest {
 
 #[derive(Debug, serde::Serialize)]
 pub struct RegisterResponse {
-    token: String,
     user: User,
 }
 
@@ -35,8 +33,5 @@ pub async fn register(
         false
     ).await.unwrap();
 
-    let jwt_secret = state.config.jwt_secret.to_owned();
-    let token = jwt::sign(user.id, jwt_secret).unwrap();
-
-    Json(RegisterResponse { token, user })
+    Json(RegisterResponse { user })
 }
