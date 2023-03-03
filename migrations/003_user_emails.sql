@@ -1,10 +1,3 @@
-/*
- * A user may have more than one email address; this is useful when letting the
- * user change their email so that they can verify the new one before deleting
- * the old one, but is also generally useful as they might want to use
- * different emails to log in versus where to send notifications. Therefore we
- * track user emails in a separate table.
- */
 create table user_emails (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references users on delete cascade,
@@ -18,14 +11,14 @@ create table user_emails (
   -- An unverified email cannot be set as the primary email.
   constraint user_emails_must_be_verified_to_be_primary check(is_primary is false or is_verified is true)
 );
+comment on table user_emails is
+  E'Information about a user''s email address.';
+comment on column user_emails.email is
+  E'The users email address, in `a@b.c` format.';
+comment on column user_emails.is_verified is
+  E'True if the user has is_verified their email address (by clicking the link in the email we sent them, or logging in with a social login provider), false otherwise.';
 
--- Once an email is verified, it may only be used by one user. (We can't
--- enforce this before an email is verified otherwise it could be used to
--- prevent a legitimate user from signing up.)
-create unique index uniq_user_emails_verified_email on user_emails(email) where (is_verified is true);
--- Only one primary email per user.
+create unique index uniq_user_emails_verified_email on user_emails (email) where (is_verified is true);
 create unique index uniq_user_emails_primary_email on user_emails (user_id) where (is_primary is true);
--- Allow efficient retrieval of all the emails owned by a particular user.
 create index idx_user_emails_user on user_emails (user_id);
--- For the user settings page sorting
 create index idx_user_emails_primary on user_emails (is_primary, user_id);
