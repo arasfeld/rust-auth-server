@@ -5,11 +5,7 @@ use axum::{
 };
 use oauth2::{reqwest::async_http_client, AuthorizationCode, CsrfToken, Scope, TokenResponse};
 
-use crate::http::{
-    services::oauth_registration_service::link_or_register_oauth_user,
-    models::oauth_profile::{GoogleOAuthProfile, OAuthProfile},
-    AppState
-};
+use crate::http::AppState;
 
 #[derive(Debug, serde::Deserialize)]
 #[allow(dead_code)]
@@ -40,21 +36,24 @@ pub async fn callback(
 
     // Fetch user profile
     let client = reqwest::Client::new();
-    let google_profile = client
+    let user_info = client
         .get("https://www.googleapis.com/oauth2/v2/userinfo")
         .bearer_auth(token.access_token().secret())
         .send()
         .await
         .unwrap()
-        .json::<GoogleOAuthProfile>()
+        .json::<serde_json::Value>()
         .await
         .unwrap();
 
-    let profile: OAuthProfile = google_profile.into();
+    let identifier = user_info["id"].as_str().unwrap();
+    let email = user_info["email"].as_str().unwrap();
 
-    let user = link_or_register_oauth_user(&state.db, None, "google", &profile.id, &profile)
-        .await
-        .unwrap();
+    let user = state.services.oauth_registration_service.link_or_register_oauth_user(
+        email, "google", identifier, &user_info
+    )
+    .await
+    .unwrap();
 
     Json(user)
 }

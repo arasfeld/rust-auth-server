@@ -11,8 +11,8 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::http::AppState;
-use crate::http::models::user::User;
-use crate::http::{error::Error, repositories::user_repository};
+use crate::http::error::Error;
+use crate::http::types::User;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub struct Claims {
@@ -61,7 +61,7 @@ where
         )
         .unwrap();
         // Get the user from the database
-        let user = user_repository::get_by_id(&state.db, token_data.claims.sub).await?;
+        let user = state.services.user_service.get_by_id(&token_data.claims.sub).await?.unwrap();
 
         Ok(user)
     }

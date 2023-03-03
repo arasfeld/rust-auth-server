@@ -1,67 +1,64 @@
-use sqlx::PgPool;
-use uuid::Uuid;
+use axum::async_trait;
+use std::sync::Arc;
 
 use crate::http::error::Error;
-use crate::http::models::{oauth_profile::OAuthProfile, user::User};
-use crate::http::repositories::{user_authentication_repository, user_email_repository, user_repository};
-use crate::http::services::registration_service;
+use crate::http::repositories::{UserAuthenticationRepository, UserEmailRepository, UserRepository};
+use crate::http::types::User;
 use crate::http::utils::username_generator;
 
-pub async fn link_or_register_oauth_user(
-    db: &PgPool,
-    user_id: Option<Uuid>,
-    service: &str,
-    identifier: &str,
-    profile: &OAuthProfile,
-) -> Result<User, Error> {
-    let mut maybe_user_id = user_id.clone();
-    let maybe_user_authentication =
-        user_authentication_repository::get_by_identifier(db, identifier, service).await?;
-
-    if let None = maybe_user_authentication {
-        if let Some(user_id) = maybe_user_id {
-            // user exists, but new authentication
-            maybe_user_id = Some(user_id);
-            user_authentication_repository::insert(db, user_id, identifier, service).await?;
-        } else {
-            // look for user_email that matches
-            let maybe_user_email = user_email_repository::get_by_email(db, &profile.email).await?;
-            if let Some(user_email) = maybe_user_email {
-                // founds user_email, add new authentication
-                maybe_user_id = Some(user_email.user_id);
-                user_authentication_repository::insert(db, user_email.user_id, identifier, service).await?;
-            } else {
-                // create new user
-                let user = register_oauth_user(db, &profile.email, service, identifier).await?;
-
-                return Ok(user);
-            }
-        }
-    }
-
-    // return the user
-    if let Some(user_id) = maybe_user_id {
-        let user = user_repository::get_by_id(db, user_id).await?;
-        Ok(user)
-    } else {
-        Err(Error::Anyhow(anyhow::anyhow!("failed to get the user")))
-    }
+pub struct OAuthRegistrationServiceImpl<A: UserRepository, B: UserAuthenticationRepository, C: UserEmailRepository> {
+    pub user_repository: Arc<A>,
+    pub user_authentication_repository: Arc<B>,
+    pub user_email_repository: Arc<C>,
 }
 
-async fn register_oauth_user(
-    db: &PgPool,
-    email: &str,
-    service: &str,
-    identifier: &str,
-) -> Result<User, Error> {
-    let username = username_generator::generate();
-    let user = registration_service::register_user(db, &username, email, None, true)
-        .await
-        .unwrap();
+#[async_trait]
+pub trait OAuthRegistrationService {
+    async fn link_or_register_oauth_user(
+        self: &Self,
+        email: &str,
+        service: &str,
+        identifier: &str,
+        details: &serde_json::Value,
+    ) -> Result<User, Error>;
+}
 
-    user_authentication_repository::insert(db, user.id, identifier, service)
-        .await
-        .unwrap();
+pub type DynOAuthRegistrationService = Arc<dyn OAuthRegistrationService + Send + Sync>;
 
-    Ok(user)
+#[async_trait]
+impl <A, B, C> OAuthRegistrationService for OAuthRegistrationServiceImpl<A, B, C>
+    where A: UserRepository + Sync + Send,
+          B: UserAuthenticationRepository + Sync + Send,
+          C: UserEmailRepository + Sync + Send {
+
+    async fn link_or_register_oauth_user(
+        self: &Self,
+        email: &str,
+        service: &str,
+        identifier: &str,
+        details: &serde_json::Value,
+    ) -> Result<User, Error> {
+        let user: User = match self.user_authentication_repository.get_by_identifier(service, identifier).await? {
+            Some(user_authentication) => {
+                // user has already authenticated with this oauth provider
+                self.user_repository.get_by_id(&user_authentication.user_id).await?.unwrap()
+            },
+            None => {
+                // look for user_email that matches
+                if let Some(user_email) = self.user_email_repository.get_by_email(email).await? {
+                    // found user_email, add new authentication
+                    self.user_authentication_repository.create(&user_email.user_id, identifier, service, details).await?;
+                    self.user_repository.get_by_id(&user_email.user_id).await?.unwrap()
+                } else {
+                    // create new user
+                    let username = username_generator::generate();
+                    let user = self.user_repository.create(&username).await?;
+                    self.user_email_repository.create(&user.id, email, true).await?;
+                    self.user_authentication_repository.create(&user.id, identifier, service, details).await?;
+                    user
+                }
+            },
+        };
+        return Ok(user);
+    }
 }

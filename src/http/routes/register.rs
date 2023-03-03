@@ -5,8 +5,7 @@ use axum::{
 };
 
 use crate::http::AppState;
-use crate::http::models::user::User;
-use crate::http::services::registration_service;
+use crate::http::types::User;
 use crate::http::utils::jwt;
 
 #[derive(Debug, serde::Deserialize)]
@@ -27,12 +26,10 @@ pub async fn register(
     Query(query): Query<RegisterRequest>,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    let user = registration_service::register_user(
-        &state.db,
+    let user = state.services.registration_service.register_user(
         &query.username,
         &query.email,
-        Some(&query.password),
-        false
+        &query.password,
     ).await.unwrap();
 
     let jwt_secret = state.config.jwt_secret.to_owned();

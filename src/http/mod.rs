@@ -10,10 +10,10 @@ use crate::config::Config;
 
 mod error;
 mod middleware;
-mod models;
 mod repositories;
 mod routes;
 mod services;
+mod types;
 mod utils;
 
 /// The core type through which handler functions can access common API state.
@@ -23,8 +23,8 @@ mod utils;
 #[derive(Clone)]
 pub struct AppState {
     config: Arc<Config>,
-    db: PgPool,
     google_client: BasicClient,
+    services: Arc<middleware::services::Services>,
 }
 
 pub async fn serve(config: Config, db: PgPool) -> anyhow::Result<()> {
@@ -44,10 +44,12 @@ pub async fn serve(config: Config, db: PgPool) -> anyhow::Result<()> {
     let google_client =
         middleware::oauth_google::get_client(&config.google_client_id, &config.google_client_secret);
 
+    let services = middleware::services::build(db);
+
     let app_state = AppState {
         config: Arc::new(config),
-        db,
         google_client,
+        services: Arc::new(services)
     };
 
     // build our application with a route

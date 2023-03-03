@@ -5,8 +5,7 @@ use axum::{
 };
 
 use crate::http::AppState;
-use crate::http::models::user::User;
-use crate::http::services::login_service;
+use crate::http::types::User;
 use crate::http::utils::jwt;
 
 #[derive(Debug, serde::Deserialize)]
@@ -26,7 +25,7 @@ pub async fn login(
     Query(query): Query<LoginRequest>,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    let user = login_service::login(&state.db, &query.username, &query.password).await.unwrap();
+    let user = state.services.login_service.login(&query.username, &query.password).await.unwrap();
 
     let jwt_secret = state.config.jwt_secret.to_owned();
     let token = jwt::sign(user.id, jwt_secret).unwrap();
