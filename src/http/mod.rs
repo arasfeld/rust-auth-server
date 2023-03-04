@@ -2,7 +2,7 @@ use anyhow::Context;
 use axum::{routing::{get, post}, Extension, Router};
 use oauth2::basic::BasicClient;
 use sqlx::PgPool;
-use std::{net::SocketAddr, sync::Arc};
+use std::{net::{IpAddr, Ipv6Addr, SocketAddr}, str::FromStr, sync::Arc};
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -36,6 +36,12 @@ pub async fn serve(config: Config, db: PgPool) -> anyhow::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
+    // build the address to bind the server to
+    let addr = SocketAddr::from((
+        IpAddr::from_str(&config.host).unwrap_or(IpAddr::V6(Ipv6Addr::LOCALHOST)),
+        config.port
+    ));
+
     let middleware_stack = ServiceBuilder::new()
         .layer(TraceLayer::new_for_http())
         .layer(Extension(middleware::cors()))
@@ -62,7 +68,6 @@ pub async fn serve(config: Config, db: PgPool) -> anyhow::Result<()> {
         .with_state(app_state);
 
     // run it
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())

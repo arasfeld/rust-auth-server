@@ -10,7 +10,7 @@
 #[command(author, version, about, long_about = None)]
 pub struct Config {
     /// The connection URL for the Postgres database this application should use.
-    #[arg(long, env)]
+    #[arg(long, env, default_value = "postgres://postgres:postgres@localhost:5432/rust-auth-server")]
     pub database_url: String,
 
     /// Google OAuth client ID
@@ -21,7 +21,15 @@ pub struct Config {
     #[arg(long, env)]
     pub google_client_secret: String,
 
+    /// The host that the server should run on
+    #[arg(long, env, default_value = "localhost")]
+    pub host: String,
+
     /// The secret used for encoding JWT tokens
     #[arg(long, env)]
     pub jwt_secret: String,
+
+    /// The port that the server should run on
+    #[arg(long, env, default_value = "3000")]
+    pub port: u16,
 }
