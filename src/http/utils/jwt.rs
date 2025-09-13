@@ -1,13 +1,16 @@
 use axum::{
     async_trait,
-    extract::{FromRef, FromRequestParts, TypedHeader},
-    headers::{authorization::Bearer, Authorization},
+    extract::{FromRef, FromRequestParts},
     http::request::Parts,
     RequestPartsExt,
 };
+use axum_extra::{
+    headers::{authorization::Bearer, Authorization},
+    TypedHeader,
+};
 use jsonwebtoken::{decode, DecodingKey, EncodingKey, Header, Validation};
 use std::time::Duration;
-use time::OffsetDateTime;
+use chrono::Utc;
 use uuid::Uuid;
 
 use crate::http::AppState;
@@ -22,15 +25,15 @@ pub struct Claims {
 }
 
 pub fn sign(id: Uuid, secret: String) -> Result<String, Error> {
-    let iat = OffsetDateTime::now_utc();
+    let iat = Utc::now();
     let exp = iat + Duration::from_secs(60 * 60 * 24);
 
     Ok(jsonwebtoken::encode(
         &Header::default(),
         &Claims {
             sub: id,
-            iat: iat.unix_timestamp(),
-            exp: exp.unix_timestamp(),
+            iat: iat.timestamp(),
+            exp: exp.timestamp(),
         },
         &EncodingKey::from_secret(secret.as_bytes()),
     )

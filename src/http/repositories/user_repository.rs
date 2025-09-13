@@ -20,22 +20,23 @@ pub trait UserRepository {
 #[async_trait]
 impl UserRepository for UserRepositoryImpl {
     async fn get_by_id(self: &Self, id: &Uuid) -> Result<Option<User>, Error> {
-        sqlx::query_as!(User, "select id, username from users where id = $1", id)
+        sqlx::query_as::<_, User>("select id, username from users where id = $1")
+            .bind(id)
             .fetch_optional(&self.db)
             .await
             .map_err(Error::Sqlx)
     }
 
     async fn get_by_username(self: &Self, username: &str) -> Result<Option<User>, Error> {
-        sqlx::query_as!(User, "select id, username from users where username = $1", username)
+        sqlx::query_as::<_, User>("select id, username from users where username = $1")
+            .bind(username)
             .fetch_optional(&self.db)
             .await
             .map_err(Error::Sqlx)
     }
 
     async fn get_by_email(self: &Self, email: &str) -> Result<Option<User>, Error> {
-        sqlx::query_as!(
-            User,
+        sqlx::query_as::<_, User>(
             r#"
                 select u.id, u.username
                 from user_emails ue
@@ -43,16 +44,17 @@ impl UserRepository for UserRepositoryImpl {
                 where ue.email = $1
                 order by ue.is_verified desc, ue.created_at asc
                 limit 1
-            "#,
-            email
+            "#
         )
+        .bind(email)
         .fetch_optional(&self.db)
         .await
         .map_err(Error::Sqlx)
     }
 
     async fn create(self: &Self, username: &str) -> Result<User, Error> {
-        sqlx::query_as!(User, "insert into users (username) values ($1) returning id, username", username)
+        sqlx::query_as::<_, User>("insert into users (username) values ($1) returning id, username")
+            .bind(username)
             .fetch_one(&self.db)
             .await
             .on_constraint("users_username_key", |_| {

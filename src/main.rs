@@ -9,7 +9,7 @@ use rust_auth_server::http;
 async fn main() -> anyhow::Result<()>  {
     // This returns an error if the `.env` file doesn't exist, but that's not what we want
     // since we're not going to use a `.env` file if we deploy this application.
-    dotenv::dotenv().ok();
+    dotenvy::dotenv().ok();
 
     // Parse our configuration from the environment.
     // This will exit with a help message if something is wrong.

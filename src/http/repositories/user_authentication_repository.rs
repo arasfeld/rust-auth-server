@@ -24,35 +24,33 @@ pub trait UserAuthenticationRepository {
 #[async_trait]
 impl UserAuthenticationRepository for UserAuthenticationRepositoryImpl {
     async fn get_by_identifier(self: &Self, service: &str, identifier: &str) -> Result<Option<UserAuthentication>, Error> {
-        sqlx::query_as!(
-            UserAuthentication,
+        sqlx::query_as::<_, UserAuthentication>(
             r#"
                 select id, user_id
                 from user_authentications
                 where identifier = $1 and service = $2
                 limit 1
-            "#,
-            identifier,
-            service
+            "#
         )
+        .bind(identifier)
+        .bind(service)
         .fetch_optional(&self.db)
         .await
         .map_err(Error::Sqlx)
     }
 
     async fn create(self: &Self, user_id: &Uuid, service: &str, identifier: &str, details: &serde_json::Value) -> Result<UserAuthentication, Error> {
-        sqlx::query_as!(
-            UserAuthentication,
+        sqlx::query_as::<_, UserAuthentication>(
             r#"
                 insert into user_authentications (user_id, identifier, service, details)
                 values ($1, $2, $3, $4)
                 returning id, user_id
-            "#,
-            user_id,
-            identifier,
-            service,
-            details,
+            "#
         )
+        .bind(user_id)
+        .bind(identifier)
+        .bind(service)
+        .bind(details)
         .fetch_one(&self.db)
         .await
         .map_err(Error::Sqlx)

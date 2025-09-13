@@ -1,5 +1,6 @@
 use axum::async_trait;
 use std::sync::Arc;
+use chrono::{Utc, Duration};
 
 use crate::http::error::Error;
 use crate::http::repositories::{UserRepository, UserSecretRepository};
@@ -35,7 +36,7 @@ impl <A, B> LoginService for LoginServiceImpl<A, B>
     
             // Have there been too many login attempts?
             if user_secrets.first_failed_password_attempt.is_some()
-                && user_secrets.first_failed_password_attempt.unwrap() > time::OffsetDateTime::now_utc() - time::Duration::minutes(5)
+                && user_secrets.first_failed_password_attempt.unwrap() > Utc::now() - Duration::minutes(5)
                 && user_secrets.failed_password_attempts >= 3 {
                 return Err(Error::TooManyAttempts);
             }

@@ -20,29 +20,29 @@ pub trait UserSecretRepository {
 #[async_trait]
 impl UserSecretRepository for UserSecretRepositoryImpl {
     async fn find_by_user_id(self: &Self, user_id: &Uuid) -> Result<UserSecret, Error> {
-        sqlx::query_as!(
-            UserSecret,
+        sqlx::query_as::<_, UserSecret>(
             r#"
                 select password_hash, failed_password_attempts, first_failed_password_attempt
                 from user_secrets
                 where user_id = $1
-            "#,
-            user_id
+            "#
         )
+        .bind(user_id)
         .fetch_one(&self.db)
         .await
         .map_err(Error::Sqlx)
     }
     
     async fn update_password_hash(self: &Self, user_id: &Uuid, password_hash: &str) -> Result<(), Error> {
-        sqlx::query!(
+        sqlx::query(
             r#"
                 update user_secrets
                 set password_hash = $2
                 where user_id = $1
-            "#,
-            user_id, password_hash,
+            "#
         )
+        .bind(user_id)
+        .bind(password_hash)
         .execute(&self.db)
         .await
         .map_err(Error::Sqlx)
@@ -50,16 +50,16 @@ impl UserSecretRepository for UserSecretRepositoryImpl {
     }
     
     async fn reset_login_attempts(self: &Self, user_id: &Uuid) -> Result<(), Error> {
-        sqlx::query!(
+        sqlx::query(
             r#"
                 update user_secrets
                 set failed_password_attempts = 0,
                     first_failed_password_attempt = null,
                     last_login_at = now()
                 where user_id = $1
-            "#,
-            user_id
+            "#
         )
+        .bind(user_id)
         .execute(&self.db)
         .await
         .map_err(Error::Sqlx)
@@ -67,15 +67,15 @@ impl UserSecretRepository for UserSecretRepositoryImpl {
     }
     
     async fn add_failed_login_attempt(self: &Self, user_id: &Uuid) -> Result<(), Error> {
-        sqlx::query!(
+        sqlx::query(
             r#"
                 update user_secrets
                 set failed_password_attempts = (case when first_failed_password_attempt is null or first_failed_password_attempt < now() - interval '5 minutes' then 1 else failed_password_attempts + 1 end),
                     first_failed_password_attempt = (case when first_failed_password_attempt is null or first_failed_password_attempt < now() - interval '5 minutes' then now() else first_failed_password_attempt end)
                 where user_id = $1
-            "#,
-            user_id
+            "#
         )
+        .bind(user_id)
         .execute(&self.db)
         .await
         .map_err(Error::Sqlx)

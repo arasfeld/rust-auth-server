@@ -69,8 +69,11 @@ pub async fn serve(config: Config, db: PgPool) -> anyhow::Result<()> {
 
     // run it
     tracing::debug!("listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+    let listener = tokio::net::TcpListener::bind(&addr)
+        .await
+        .context("failed to bind to address")?;
+    
+    axum::serve(listener, app)
         .await
         .context("error running HTTP server")
 }
